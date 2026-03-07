@@ -13,6 +13,7 @@ include(config/options.cmake)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
+set(QT_MAJOR "Qt6")
 add_executable(${PROJECT_NAME})
 
 
@@ -111,6 +112,7 @@ target_sources(${PROJECT_NAME}
     src/sql/parser/sqlite3_lexer.h
     src/sql/parser/sqlite3_location.h
     src/sql/parser/sqlite3_parser.hpp
+
 )
 
 target_sources(${PROJECT_NAME}
@@ -118,6 +120,8 @@ target_sources(${PROJECT_NAME}
     src/sqlitedb.h
     src/AboutDialog.h
     src/EditIndexDialog.h
+    src/DiffDialog.h
+    src/DiffHelper.h
     src/EditDialog.h
     src/EditTableDialog.h
     src/AddRecordDialog.h
@@ -165,6 +169,8 @@ target_sources(${PROJECT_NAME}
 target_sources(${PROJECT_NAME}
     PRIVATE
     src/AboutDialog.cpp
+    src/DiffDialog.cpp
+    src/DiffHelper.cpp
     src/EditIndexDialog.cpp
     src/EditDialog.cpp
     src/EditTableDialog.cpp
@@ -224,6 +230,7 @@ source_group("Qt UI" "src/.*\.ui$")
 target_sources(${PROJECT_NAME}
     PRIVATE
     src/AboutDialog.ui
+    src/DiffDialog.ui
     src/EditIndexDialog.ui
     src/EditDialog.ui
     src/EditTableDialog.ui

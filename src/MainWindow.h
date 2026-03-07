@@ -10,6 +10,7 @@
 
 struct BrowseDataTableSettings;
 class DbStructureModel;
+class DiffDialog;
 class EditDialog;
 class ExtendedTableWidget;
 class FindReplaceDialog;
@@ -107,7 +108,7 @@ private:
      * @brief dockDbSelected provides a simple read only interface to the actual selected node of ui->treeSchemaDock
      */
     DbStructureQItemViewFacade *dockDbSelected;
-
+    DiffDialog* diffDock;
     EditDialog* editDock;
     PlotDock* plotDock;
     TableBrowser* currentTableBrowser;

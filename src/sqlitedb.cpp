@@ -1992,7 +1992,7 @@ void DBBrowserDB::updateSchema()
         return;
 
     // Get a list of all databases. This list always includes the main and the temp database but can include more items if there are attached databases
-    if(!executeSQL("PRAGMA database_list;", false, true, [this](int, std::vector<QByteArray> db_values, std::vector<QByteArray>) -> bool {
+    if(!executeSQL("PRAGMA database_list;", false, true, [this](int param1, std::vector<QByteArray> db_values, std::vector<QByteArray> param2) -> bool {
         // Get the schema name which is in column 1 (counting starts with 0). 0 contains an ID and 2 the file path.
         const std::string schema_name = db_values.at(1).toStdString();
 
@@ -2007,7 +2007,7 @@ void DBBrowserDB::updateSchema()
         else
             statement = "SELECT type,name,sql,tbl_name FROM " + sqlb::escapeIdentifier(schema_name) + ".sqlite_master;";
 
-        if(!executeSQL(statement, false, true, [this, schema_name, &object_map](int, std::vector<QByteArray> values, std::vector<QByteArray>) -> bool {
+        if(!executeSQL(statement, false, true, [this, schema_name, &object_map](int param1, std::vector<QByteArray> values, std::vector<QByteArray> param2) -> bool {
             const std::string val_type = values.at(0).toStdString();
             const std::string val_name = values.at(1).toStdString();
             std::string val_sql = values.at(2).toStdString();

@@ -2,7 +2,7 @@
 #include "sql/ObjectIdentifier.h"
 #include "sql/sqlitetypes.h"
 #include "ui_MainWindow.h"
-
+#include "DiffDialog.h"
 #include "Application.h"
 #include "EditIndexDialog.h"
 #include "AboutDialog.h"
@@ -71,6 +71,7 @@ MainWindow::MainWindow(QWidget* parent)
       db(),
       m_currentTabTableModel(nullptr),
       editDock(new EditDialog(this)),
+      diffDock(new DiffDialog(this,this)),
       plotDock(new PlotDock(this)),
       currentTableBrowser(nullptr),
       findReplaceDialog(new FindReplaceDialog(this)),
@@ -155,6 +156,7 @@ void MainWindow::init()
 
     // Create docks
     ui->dockEdit->setWidget(editDock);
+    ui->dockDiff->setWidget(diffDock);
     ui->dockPlot->setWidget(plotDock);
 
     // Set up edit dock
@@ -311,6 +313,10 @@ void MainWindow::init()
     ui->viewMenu->insertAction(ui->viewDBToolbarAction, ui->dockEdit->toggleViewAction());
     ui->viewMenu->actions().at(3)->setShortcut(QKeySequence(tr("Ctrl+E")));
     ui->viewMenu->actions().at(3)->setIcon(QIcon(":/icons/log_dock"));
+
+    ui->viewMenu->insertAction(ui->viewDBToolbarAction, ui->dockDiff->toggleViewAction());
+    ui->viewMenu->actions().at(4)->setShortcut(QKeySequence(tr("Ctrl+F")));
+    ui->viewMenu->actions().at(4)->setIcon(QIcon(":/icons/log_dock"));
 
     // Set checked state if toolbar is visible
     ui->viewDBToolbarAction->setChecked(!ui->toolbarDB->isHidden());

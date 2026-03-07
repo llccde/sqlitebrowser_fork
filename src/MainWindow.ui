@@ -1264,6 +1264,17 @@ You can drag SQL statements from an object row and drop them into other applicat
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_4"/>
   </widget>
+	 
+	 
+    <widget class="QDockWidget" name="dockDiff">
+	    <property name="windowTitle">
+		    <string>&amp;diff result</string>
+	    </property>
+	    <attribute name="dockWidgetArea">
+		    <number>2</number>
+	    </attribute>
+	    <widget class="QWidget" name="dockWidgetContents_9"/>
+    </widget>
   <widget class="QDockWidget" name="dockLog">
    <property name="windowTitle">
     <string>SQL &amp;Log</string>

@@ -179,8 +179,11 @@ TableBrowser::TableBrowser(DBBrowserDB* _db, QWidget* parent) :
         emit newDockRequested();
     });
     connect(ui->actionRefresh, &QAction::triggered, this, [this]() {
+
         db->updateSchema();
         refresh();
+        ;
+        return;
     });
     connect(ui->fontComboBox, &QFontComboBox::currentFontChanged, this, [this](const QFont &font) {
         modifyFormat([font](CondFormat& format) { format.setFontFamily(font.family()); });
@@ -849,9 +852,9 @@ sqlb::Query TableBrowser::buildQuery(const BrowseDataTableSettings& storedData, 
     return query;
 }
 
-void TableBrowser::applyModelSettings(const BrowseDataTableSettings& storedData, const sqlb::Query& query)
+void TableBrowser::applyModelSettings(const BrowseDataTableSettings& storedData, const sqlb::Query& query,bool diff)
 {
-    // Set query which also resets the model
+    
     m_model->setQuery(query);
 
     // Regular conditional formats

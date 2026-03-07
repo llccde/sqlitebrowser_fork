@@ -175,7 +175,7 @@ private:
     void modifyFormat(std::function<void(CondFormat&)> changeFunction);
 
     sqlb::Query buildQuery(const BrowseDataTableSettings& storedData, const sqlb::ObjectIdentifier& tablename) const;
-    void applyModelSettings(const BrowseDataTableSettings& storedData, const sqlb::Query& query);
+    void applyModelSettings(const BrowseDataTableSettings& storedData, const sqlb::Query& query,bool diff = false);
     void applyViewportSettings(const BrowseDataTableSettings& storedData, const sqlb::ObjectIdentifier& tablename);
     void generateFilters();
 };
