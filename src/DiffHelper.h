@@ -6,12 +6,15 @@
 #include<atomic>
 #include<Qmap>
 #include<mutex>
-#include<sqlite3.h>
-#include"sqlitedb.h"
+#include<sqlite.h>
+#include"RowCache.h"
 #include"qthread.h"
 #include"qobject.h"
+
+class RowLoader;
 struct sqlite3;
 class SqliteTableModel;
+class DBBrowserDB;
 
 class DiffWorker:public QObject{
 	Q_OBJECT
@@ -20,7 +23,16 @@ class DiffWorker:public QObject{
 	QString selectQuery;
 	QString countQuery;
 	QThread thread;
+	friend class RowLoader;
+	RowLoader* rowLoader;
 public:
+	static const QString workOK ;
+	static const int chunkSize;
+	struct {
+		long long begin;
+		long long end;
+	} cacheArea;
+	Cache my_cache;
 	enum columnType {
 		intType = SQLITE_INTEGER,
 		floatType = SQLITE_FLOAT,
@@ -70,20 +82,23 @@ public:
 	void setTable(const QString& tableName);
 
 	//ÒÔprimaryColumnÎªË÷Òý
+	inline const OldTable* getOldTable() {
+		return oldTable.get();
+	}
+
+	const QVector<int>* getAddedRowIncurrent();
+	const QVector<int>* getRemovedRowInOld();
 	
-	QVector<int> getAddedRowIncurrent();
-	QVector<int> getRemovedRowInOld();
-	
-	QVector<int> getChangedRowInCurrent();
-	QVector<int> getChangedRowInOld();
+	const QVector<int>* getChangedRowInCurrent();
+	const QVector<int>* getChangedRowInOld();
 	//-----------------------------
 
-	QVector<bool> isRowInCurrentNew();
-	QVector<bool> isRowInOldRemoved();
+	const QVector<bool>* isRowInCurrentNew();
+	const QVector<bool>* isRowInOldRemoved();
 	
 
-	QVector<bool> isRowInCurrentChanged();
-	QVector<bool> isRowInOldChanged();
+	const QVector<bool>* isRowInCurrentChanged();
+	const QVector<bool>* isRowInOldChanged();
 	//----------------------------
 
 	bool isRowInCurrentNew(int row);
@@ -121,8 +136,8 @@ public:
 		thread.wait();
 	}
 signals:
-	void recordOldDone();
-	void diffDone();
+	void recordOldDone(QString state = workOK);
+	void diffDone(QString state = workOK);
 
 	void startRecord(WorkID ID);
 	void startDiff(WorkID ID);

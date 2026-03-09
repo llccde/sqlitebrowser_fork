@@ -23,6 +23,7 @@
    TODO introduce maximum segment size?
 
 **/
+
 template <typename T>
 class RowCache
 {
@@ -260,5 +261,6 @@ void RowCache<T>::smallestNonAvailableRange (size_t & row_begin, size_t & row_en
     if(row_end < row_begin)
         row_end = row_begin;
 }
-
+using Cache_text = RowCache<std::vector<QString>>;
+using Cache = RowCache<std::vector<QByteArray>>;
 #endif // SEGMENTING_CACHE_H

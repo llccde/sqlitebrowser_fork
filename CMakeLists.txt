@@ -122,6 +122,7 @@ target_sources(${PROJECT_NAME}
     src/EditIndexDialog.h
     src/DiffDialog.h
     src/DiffHelper.h
+    src/DiffDataModel.h
     src/EditDialog.h
     src/EditTableDialog.h
     src/AddRecordDialog.h
@@ -171,6 +172,7 @@ target_sources(${PROJECT_NAME}
     src/AboutDialog.cpp
     src/DiffDialog.cpp
     src/DiffHelper.cpp
+    src/DiffDataModel.cpp
     src/EditIndexDialog.cpp
     src/EditDialog.cpp
     src/EditTableDialog.cpp

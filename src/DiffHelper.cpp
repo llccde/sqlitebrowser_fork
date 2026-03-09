@@ -3,65 +3,27 @@
 #include "sqlite.h"
 #include <QDebug>
 #include <QRegularExpression>
-#include <sstream>
-#include <iomanip>
+
 #include"qobject.h"
-namespace DiffHelp {
-    QString rtrimChar(const QString& s, QChar c)
-    {
-        QString r = s.trimmed();
-        while (r.endsWith(c))
-            r.chop(1);
-        return r;
-    }
-    QString columnToString(sqlite3_stmt* stmt, int col, int type = -1) {
-        if(type == -1)type = sqlite3_column_type(stmt, col);
+#include"sqlitedb.h"
+#include"RowLoader.h"
 
-        switch (type) {
-        case SQLITE_INTEGER:
-            return QString::number(sqlite3_column_int64(stmt, col));
+const QString DiffWorker::workOK("done");
+const int DiffWorker::chunkSize(2000);
 
-        case SQLITE_FLOAT:
-            return QString::number(sqlite3_column_double(stmt, col));
-
-        case SQLITE_TEXT: {
-            const char* text = reinterpret_cast<const char*>(
-                sqlite3_column_text(stmt, col));
-            return text ? text : "";
-        }
-
-        case SQLITE_BLOB: {
-            int size = sqlite3_column_bytes(stmt, col);
-            const unsigned char* blob = static_cast<const unsigned char*>(
-                sqlite3_column_blob(stmt, col));
-            std::ostringstream hex;
-            hex << std::hex << std::setfill('0');
-            for (int i = 0; i < size; ++i) {
-                hex << std::setw(2) << static_cast<int>(blob[i]);
-            }
-            return QString::fromStdString(hex.str());
-        }
-
-        case SQLITE_NULL: {
-            return"";
-        }
-        default:
-            assert(false);
-            return "<ERROR!>";
-        }
-    }
-}
 DiffWorker::DiffWorker(DBBrowserDB* _db) :_db(_db)
 {
     db_getter = [this]() {
         return this->_db->get("do diff");
         };
+    rowLoader->triggerFetch(1,1,1);
     QObject::connect(this, &DiffWorker::startRecord,
         this, &DiffWorker::recordOld,
         Qt::ConnectionType::QueuedConnection);
     QObject::connect(this, &DiffWorker::startDiff,
         this, &DiffWorker::diff,
         Qt::ConnectionType::QueuedConnection);
+    oldTable.reset(new OldTable());
     this->moveToThread(&thread);
     this->launch();
 }
@@ -82,7 +44,16 @@ void DiffWorker::recordOld(WorkID ID){
 
     QString query = selectQuery;
     auto PDB = db_getter();
+    if (query.isEmpty()) {
+        emit recordOldDone("no table select");
+        return;
+    }
     assert(PDB != nullptr);
+    if (PDB == nullptr) {
+        emit recordOldDone("no database connection");
+        return;
+    }
+    
     std::unique_ptr<DiffWorker::OldTable> tableData(new OldTable());
 
     QByteArray utf8Query = query.toUtf8();
@@ -100,7 +71,8 @@ void DiffWorker::recordOld(WorkID ID){
             QVector<QString> rowdata;
             for (size_t i = 0;i < num_columns;++i)
             {
-                rowdata.append(DiffHelp::columnToString(stmt,static_cast<int>(i)));
+                //auto f = &RowLoader::ex;
+                rowdata.append(RowLoader::columnToStringEX(stmt,static_cast<int>(i),-1));
             }
             tableData->table.append(std::move(rowdata));
         }
@@ -111,7 +83,7 @@ void DiffWorker::recordOld(WorkID ID){
         std::lock_guard l(swapCache);
         oldTable = std::move(tableData);
     }
-    
+    emit recordOldDone();
 
 }
 

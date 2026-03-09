@@ -27,9 +27,9 @@ SqliteTableModel::SqliteTableModel(DBBrowserDB& db, QObject* parent, const QStri
     , m_realRowCount(0)
     , m_encoding(encoding)
 {
+    
     // Load initial settings first
     reloadSettings();
-
     worker = new RowLoader(
         [this, force_wait](){ return m_db.get(tr("reading rows"), force_wait); },
         [this](QString stmt){ return m_db.logSQL(stmt, kLogMsg_App); },

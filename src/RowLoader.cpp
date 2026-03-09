@@ -1,21 +1,23 @@
 #include <QDebug>
 #include <QRegularExpression>
+#include <sstream>
+#include <iomanip>
 
 #include "RowLoader.h"
 #include "sqlite.h"
+
 
 namespace {
 
     QString rtrimChar(const QString& s, QChar c)
     {
         QString r = s.trimmed();
-        while(r.endsWith(c))
+        while (r.endsWith(c))
             r.chop(1);
         return r;
     }
 
-} // anon ns
-
+}; // anon ns
 
 RowLoader::RowLoader (std::function<std::shared_ptr<sqlite3>(void)> db_getter_,
     std::function<void(QString)> statement_logger_,
@@ -36,6 +38,50 @@ RowLoader::RowLoader (std::function<std::shared_ptr<sqlite3>(void)> db_getter_,
     , next_task(nullptr)
 {
 }
+
+QString RowLoader::columnToStringEX(sqlite3_stmt* stmt, int col, int type)
+{
+    if (type == -1)type = sqlite3_column_type(stmt, col);
+
+    switch (type) {
+    case SQLITE_INTEGER:
+        return QString::number(sqlite3_column_int64(stmt, col));
+
+    case SQLITE_FLOAT:
+        return QString::number(sqlite3_column_double(stmt, col));
+
+    case SQLITE_TEXT: {
+        const char* text = reinterpret_cast<const char*>(
+            sqlite3_column_text(stmt, col));
+        return text ? text : "";
+    }
+
+    case SQLITE_BLOB: {
+        int size = sqlite3_column_bytes(stmt, col);
+        const unsigned char* blob = static_cast<const unsigned char*>(
+            sqlite3_column_blob(stmt, col));
+        std::ostringstream hex;
+        hex << std::hex << std::setfill('0');
+        for (int i = 0; i < size; ++i) {
+            hex << std::setw(2) << static_cast<int>(blob[i]);
+        }
+        return QString::fromStdString(hex.str());
+    }
+
+    case SQLITE_NULL: {
+        return"";
+    }
+    default:
+        assert(false);
+        return "<ERROR!>";
+    }
+}
+
+int RowLoader::ex(sqlite3_stmt* stmt, int col, int type)
+{
+    return 0;
+}
+;
 
 void RowLoader::setQuery (const QString& new_query, const QString& newCountQuery)
 {
@@ -244,11 +290,15 @@ void RowLoader::process (Task & t)
             for(size_t i=0;i<num_columns;++i)
             {
                 // No need to do anything for NULL values because we can just use the already default constructed value
-                if(sqlite3_column_type(stmt, static_cast<int>(i)) != SQLITE_NULL)
+                auto type = sqlite3_column_type(stmt, static_cast<int>(i));
+                if(type != SQLITE_NULL)
                 {
                     int bytes = sqlite3_column_bytes(stmt, static_cast<int>(i));
-                    if(bytes)
-                        rowdata[i] = QByteArray(static_cast<const char*>(sqlite3_column_blob(stmt, static_cast<int>(i))), bytes);
+                    if (bytes)
+                        if (!useTextCache_UTF8)
+                            rowdata[i] = QByteArray(static_cast<const char*>(sqlite3_column_blob(stmt, static_cast<int>(i))), bytes);
+                        else
+                            rowdata[i] = columnToStringEX(stmt, i, type).toUtf8();
                     else
                         rowdata[i] = "";
                 }

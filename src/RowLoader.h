@@ -15,6 +15,7 @@
 #include "RowCache.h"
 
 struct sqlite3;
+struct sqlite3_stmt;
 
 class RowLoader : public QThread
 {
@@ -23,8 +24,8 @@ class RowLoader : public QThread
     void run() override;
 
 public:
-    using Cache = RowCache<std::vector<QByteArray>>;
-
+    static QString columnToStringEX(sqlite3_stmt* stmt, int col, int type = -1);
+    static int ex(sqlite3_stmt* stmt, int col, int type = -1);
     /// set up worker thread to handle row loading
     explicit RowLoader (
         std::function<std::shared_ptr<sqlite3>(void)> db_getter,
@@ -33,6 +34,11 @@ public:
         std::mutex & cache_mutex,
         Cache & cache_data
         );
+
+    bool useTextCache_UTF8 = false;
+    inline void set_useTextCache_UTF8() {
+        useTextCache_UTF8 = true;
+    };
 
     void setQuery (const QString& new_query, const QString& newCountQuery = QString());
 
