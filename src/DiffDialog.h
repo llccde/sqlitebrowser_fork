@@ -14,7 +14,22 @@ class DiffWorker;
 class DiffDialog : public QDialog
 {
 	class DiffDataModel;
+
 	Q_OBJECT
+public:
+	enum DisplayMode {
+		showOldTableData = 0,
+		showCurrentTableData = 1,
+		showCurrentTableWithDiffResult = 2,
+		showOnlyAdded = 3,
+		showOnlyRemove = 4,
+		max = 5
+	};
+	
+	Q_ENUM(DisplayMode);
+	bool DBChanged_ButNotInRealtimeMode_DidNotUpdateCache = false;
+	long long currentIndex = 0;
+	DisplayMode currentMode = showOldTableData;
 	MainWindow* _mainWinow = nullptr;
 	std::unique_ptr<DiffWorker> diffWorker = nullptr;
 	std::unique_ptr<DiffDataModel> model = nullptr;
@@ -31,4 +46,4 @@ public slots:
 private:
 	Ui::DiffDialog *ui;
 };
-
+using DiffDisplayMode = DiffDialog::DisplayMode;

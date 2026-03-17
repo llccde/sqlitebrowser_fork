@@ -16,7 +16,14 @@
 
 struct sqlite3;
 struct sqlite3_stmt;
+class CacheWritter {
+public:
+    virtual std::mutex& getLock() = 0;
+    virtual void startRow(int num) = 0;
+    virtual void writeColumn(sqlite3_stmt* stmt, int column) = 0;
+    virtual void writeRow(int row) = 0;
 
+};
 class RowLoader : public QThread
 {
     Q_OBJECT
@@ -24,17 +31,43 @@ class RowLoader : public QThread
     void run() override;
 
 public:
-    static QString columnToStringEX(sqlite3_stmt* stmt, int col, int type = -1);
-    static int ex(sqlite3_stmt* stmt, int col, int type = -1);
+    class DeafultCacheWritter:public CacheWritter {
+    public:
+        
+        Cache& cache;
+        std::mutex& mutex;
+        Cache::value_type current;
+        // 通过 CacheWritter 继承
+        void startRow(int num) override;
+
+        void writeRow(int row) override;
+
+        // 通过 CacheWritter 继承
+        std::mutex& getLock() override;
+        DeafultCacheWritter(Cache& cache, std::mutex& mutex);
+
+        // 通过 CacheWritter 继承
+        void writeColumn(sqlite3_stmt* stmt, int column) override;
+    };
+
+    
     /// set up worker thread to handle row loading
     explicit RowLoader (
         std::function<std::shared_ptr<sqlite3>(void)> db_getter,
         std::function<void(QString)> statement_logger,
         std::vector<std::string> & headers,
         std::mutex & cache_mutex,
-        Cache & cache_data
+        Cache & cache_data,
+        std::unique_ptr<CacheWritter> cacheWritter = nullptr
         );
 
+    explicit RowLoader(
+        std::function<std::shared_ptr<sqlite3>(void)> db_getter,
+        std::function<void(QString)> statement_logger,
+        std::vector<std::string>& headers,
+        std::unique_ptr<CacheWritter> cacheWritter = nullptr
+    );
+    std::unique_ptr<CacheWritter> cacheWritter;
     bool useTextCache_UTF8 = false;
     inline void set_useTextCache_UTF8() {
         useTextCache_UTF8 = true;
@@ -76,8 +109,6 @@ private:
     const std::function<std::shared_ptr<sqlite3>()> db_getter;
     const std::function<void(QString)> statement_logger;
     std::vector<std::string> & headers;
-    std::mutex & cache_mutex;
-    Cache & cache_data;
 
     mutable std::mutex m;
     mutable std::condition_variable cv;

@@ -830,6 +830,7 @@ void DBBrowserDB::waitForDbRelease(ChoiceOnUse choice) const
         lk.unlock();
 
         bool cancel = choice == CancelOther;
+        
         if(choice == Ask) {
             QMessageBox msgBox;
             msgBox.setText(tr("The database is currently busy: ") + str);

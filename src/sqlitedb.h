@@ -313,7 +313,7 @@ private:
     /// wait for release of the DB locked through a previous get(),
     /// giving users the option to discard running task through a
     /// message box.
-    void waitForDbRelease(ChoiceOnUse choice = Ask) const;
+    void waitForDbRelease(ChoiceOnUse choice = Wait) const;
 
     QString curDBFilename;
     mutable QString lastErrorMessage;

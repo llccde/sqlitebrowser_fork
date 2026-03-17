@@ -19,15 +19,15 @@ namespace {
 
 }; // anon ns
 
-RowLoader::RowLoader (std::function<std::shared_ptr<sqlite3>(void)> db_getter_,
+RowLoader::RowLoader(std::function<std::shared_ptr<sqlite3>(void)> db_getter_,
     std::function<void(QString)> statement_logger_,
-    std::vector<std::string> & headers_,
-    std::mutex & cache_mutex_,
-    Cache & cache_data_
-    )
+    std::vector<std::string>& headers_,
+    std::mutex& cache_mutex_,
+    Cache& cache_data_,
+    std::unique_ptr<CacheWritter> cacheWritter_
+)
     : db_getter(db_getter_), statement_logger(statement_logger_)
     , headers(headers_)
-    , cache_mutex(cache_mutex_), cache_data(cache_data_)
     , query()
     , countQuery()
     , first_chunk_loaded(false)
@@ -36,52 +36,36 @@ RowLoader::RowLoader (std::function<std::shared_ptr<sqlite3>(void)> db_getter_,
     , stop_requested(false)
     , current_task(nullptr)
     , next_task(nullptr)
+    , cacheWritter(std::move(cacheWritter_))
 {
-}
-
-QString RowLoader::columnToStringEX(sqlite3_stmt* stmt, int col, int type)
-{
-    if (type == -1)type = sqlite3_column_type(stmt, col);
-
-    switch (type) {
-    case SQLITE_INTEGER:
-        return QString::number(sqlite3_column_int64(stmt, col));
-
-    case SQLITE_FLOAT:
-        return QString::number(sqlite3_column_double(stmt, col));
-
-    case SQLITE_TEXT: {
-        const char* text = reinterpret_cast<const char*>(
-            sqlite3_column_text(stmt, col));
-        return text ? text : "";
-    }
-
-    case SQLITE_BLOB: {
-        int size = sqlite3_column_bytes(stmt, col);
-        const unsigned char* blob = static_cast<const unsigned char*>(
-            sqlite3_column_blob(stmt, col));
-        std::ostringstream hex;
-        hex << std::hex << std::setfill('0');
-        for (int i = 0; i < size; ++i) {
-            hex << std::setw(2) << static_cast<int>(blob[i]);
-        }
-        return QString::fromStdString(hex.str());
-    }
-
-    case SQLITE_NULL: {
-        return"";
-    }
-    default:
-        assert(false);
-        return "<ERROR!>";
+    if (cacheWritter == nullptr) {
+        auto w = new DeafultCacheWritter(cache_data_,cache_mutex_);
+        cacheWritter.reset(w);
     }
 }
 
-int RowLoader::ex(sqlite3_stmt* stmt, int col, int type)
+RowLoader::RowLoader(std::function<std::shared_ptr<sqlite3>(void)> db_getter_,
+    std::function<void(QString)> statement_logger_,
+    std::vector<std::string>& headers_,
+    std::unique_ptr<CacheWritter> cacheWritter_
+)
+    : db_getter(db_getter_), statement_logger(statement_logger_)
+    , headers(headers_)
+    , query()
+    , countQuery()
+    , first_chunk_loaded(false)
+    , num_tasks(0)
+    , pDb(nullptr)
+    , stop_requested(false)
+    , current_task(nullptr)
+    , next_task(nullptr)
+    , cacheWritter(std::move(cacheWritter_))
 {
-    return 0;
 }
-;
+
+
+
+
 
 void RowLoader::setQuery (const QString& new_query, const QString& newCountQuery)
 {
@@ -286,25 +270,32 @@ void RowLoader::process (Task & t)
             size_t num_columns = static_cast<size_t>(sqlite3_data_count(stmt));
 
             // Construct a new row object with the right number of columns
-            Cache::value_type rowdata(num_columns);
+            // 
+            //Cache::value_type rowdata(num_columns);
+            cacheWritter->startRow(num_columns);
+
             for(size_t i=0;i<num_columns;++i)
             {
                 // No need to do anything for NULL values because we can just use the already default constructed value
-                auto type = sqlite3_column_type(stmt, static_cast<int>(i));
-                if(type != SQLITE_NULL)
-                {
-                    int bytes = sqlite3_column_bytes(stmt, static_cast<int>(i));
-                    if (bytes)
-                        if (!useTextCache_UTF8)
-                            rowdata[i] = QByteArray(static_cast<const char*>(sqlite3_column_blob(stmt, static_cast<int>(i))), bytes);
-                        else
-                            rowdata[i] = columnToStringEX(stmt, i, type).toUtf8();
-                    else
-                        rowdata[i] = "";
-                }
+                //auto type = sqlite3_column_type(stmt, static_cast<int>(i));
+                //if(type != SQLITE_NULL)
+                //{
+                //    int bytes = sqlite3_column_bytes(stmt, static_cast<int>(i));
+                //    if (bytes)
+                //        if (!useTextCache_UTF8)
+                //            rowdata[i] = QByteArray(static_cast<const char*>(sqlite3_column_blob(stmt, static_cast<int>(i))), bytes);
+                //        else
+                //            rowdata[i] = columnToString(stmt, i, type).toUtf8();
+                //    else
+                //        rowdata[i] = "";
+                //}
+                cacheWritter->writeColumn(stmt, i);
             }
-            std::lock_guard<std::mutex> lk(cache_mutex);
-            cache_data.set(row++, std::move(rowdata));
+            //std::lock_guard<std::mutex> lk(cache_mutex);
+            std::lock_guard<std::mutex> lk(cacheWritter->getLock());
+
+            //cache_data.set(row++, std::move(rowdata));
+            cacheWritter->writeRow(row++);
         }
 
         sqlite3_finalize(stmt);
@@ -324,4 +315,44 @@ void RowLoader::process (Task & t)
     }
 
     emit fetched(t.token, t.row_begin, row);
+}
+
+void RowLoader::DeafultCacheWritter::startRow(int num)
+{
+    current.resize(num);
+}
+
+
+void RowLoader::DeafultCacheWritter::writeRow(int row)
+{
+    cache.set(row, std::move(current));
+    current = Cache::value_type();
+}
+
+std::mutex& RowLoader::DeafultCacheWritter::getLock()
+{
+    
+    return mutex;
+}
+
+RowLoader::DeafultCacheWritter::DeafultCacheWritter(Cache& cache, std::mutex& mutex)
+    : cache(cache), mutex(mutex)
+{
+}
+
+void RowLoader::DeafultCacheWritter::writeColumn(sqlite3_stmt* stmt, int column)
+{
+    auto type = sqlite3_column_type(stmt, column);
+    assert(type != SQLITE_NULL);
+
+    int bytes = sqlite3_column_bytes(stmt, column);
+
+    if (bytes) {
+        current[column] = QByteArray(static_cast<const char*>(sqlite3_column_blob(stmt, column)), bytes);
+    }
+    else
+    {
+        current[column] = "";
+    }
+
 }

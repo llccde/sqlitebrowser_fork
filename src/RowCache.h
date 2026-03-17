@@ -263,4 +263,8 @@ void RowCache<T>::smallestNonAvailableRange (size_t & row_begin, size_t & row_en
 }
 using Cache_text = RowCache<std::vector<QString>>;
 using Cache = RowCache<std::vector<QByteArray>>;
+template<class T>
+using Cache_T = RowCache<std::vector<T>>;
+template<class T>
+using Cache_T_value = std::vector<T>;
 #endif // SEGMENTING_CACHE_H
